@@ -16,3 +16,5 @@ showmount -e $nfsaddr | grep "/mydata"
 if [ $? -ne 0 ] ;then
          echo "!!!{Something is wrong when mount nfs!}"
 fi
+
+
