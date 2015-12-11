@@ -1,0 +1,27 @@
+1.显示所有包含San的行
+grep --color 'San' grepfile.txt
+
+2.显示所有以J开始的人名所在的行
+grep --color '\<J' grepfile.txt
+
+3.显示所有以700结尾的行
+grep --color '700\>' grepfile.txt
+
+4.显示所有不包括834的行
+grep -v --color '834' grepfile.txt
+
+5.显示所有生日在December的行
+grep --color ':12\/.*' grepfile.txt
+
+6.显示所有这样的行:它包含一个大写字母,后跟四个小写字母,一个冒号,一个空格,和一
+个大写字母
+grep --color '[A-Z][a-z][a-z][a-z][a-z]: [A-Z]' grepfile.txt
+
+7.显示姓以K或k开头的行
+grep --color ' \<\(K\|k\)' grepfile.txt
+
+9.显示工资为六位数的行,并在前面加行号
+grep -n --color '[0-9]\{6\}' grepfile.txt
+
+10.显示包括Lincoln或lincoln的行,并且grep对大小写不敏感.
+grep -i --color 'Lincoln\|lincoln' grepfile.txt

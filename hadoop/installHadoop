@@ -1,0 +1,256 @@
+#!/bin/bash
+#
+
+root_password="123456"
+jdk_tar=jdk-8u65-linux-i586.tar.gz
+jdk_url=http://download.oracle.com/otn-pub/java/jdk/8u65-b17/jdk-8u65-linux-i586.tar.gz
+jdk_version=jdk1.8.0_65
+java_version=1.8.0_65
+jdk_install_path=/usr/local/development
+hadoop_url=http://101.44.1.4/files/2250000004303235/mirrors.hust.edu.cn/apache/hadoop/common/stable1/hadoop-1.2.1.tar.gz
+hadoop_version=hadoop-1.2.1
+hadoop_tar=hadoop-1.2.1.tar.gz
+hadoop_install_path=hadoop
+hadoop_tmp_path=/home/hadoop/hadoop_tmp
+hadoop_name_path=/home/hadoop/hdfs/name
+hadoop_data_path=/home/hadoop/hdfs/data
+user_name=hadoop
+user_passwd=hadoop
+
+#su 
+#判断能否root
+#if [ $? -ne 0 ] ;then
+#	echo "No root access"
+#	exit
+#fi
+
+shFilePath=$(pwd)
+
+#check jdk installed or not
+java -version &> /dev/null
+if [ $? -ne 0 ] ;then
+	echo {Jdk has been installed in this pc}
+	java -version
+else
+	#检查~/../usr/local/development目录存在否，不存在就创建
+	#先进入当前用户的家目录
+	#cd ~
+	#cd ../../usr/local/$jdk_install_path &> /dev/null
+	#if [ $? -ne 0 ] ;then
+        if [ ! -d $jdk_install_path ] ;then
+		echo "{Create $jdk_install_path folder to install jdk}"
+		mkdir $jdk_install_path
+		cd $jdk_install_path
+		echo "{Success to create $jdk_install_path folder}"
+	else
+		echo "{$jdk_install_path folder has already exists}"
+		cd $jdk_install_path
+	fi
+
+	#检查jdk是否解压
+	#ls | grep "$jdk_version" &> /dev/null
+	if [ ! -d $jdk_version  ] ;then
+		#检查jdk是否已有压缩包
+		if [ ! -f $jdk_tar ] ;then
+			echo "{Download $jdk_tar}"
+			wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" $jdk_url
+		fi
+		echo "{Untar $jdk_tar}"
+		tar -zxvf $jdk_tar
+
+	else
+		echo "{$jdk_version folder has already exists in $jdk_install_path/}"
+	fi
+
+	#set jdk environment
+	echo {set java environment}
+	cd ~
+	cd ../../../../etc/profile.d/
+	touch $jdk_install_path.sh
+	#echo "#!bin/bash" > $jdk_install_path.sh
+	echo "export JAVA_HOME=/usr/local/$jdk_install_path/$jdk_version" >> $jdk_install_path.sh
+	echo "export JRE_HOME=\$JAVA_HOME/jre" >> $jdk_install_path.sh
+	echo "export CLASSPATH=.:\$JAVA_HOME/lib:\$JRE_HOME/lib:\$CLASSPATH" >> $jdk_install_path.sh
+	echo "PATH=\$JAVA_HOME/bin:\$JRE_HOME/bin:\$PATH"	>> $jdk_install_path.sh	
+      source $jdk_install_path.sh
+
+	#check the java version
+	java -version | grep "$java_version" &> /dev/null	
+	if [ $? -ne 0 ] ;then
+		echo "{Success to install $jdk_version}"
+	fi
+fi
+
+#no passwd when login via ss
+echo "{Config ssh service and login via ssh without no passwd}"
+sudo yum -y install ssh openssh-server
+#update /etc/ssh/sshd_config
+#RSAAuthentication
+RSAAuthentication_lineNum=`awk '/RSAAuthentication yes/{print NR}' ~/../etc/ssh/sshd_config`
+RSAAuthentication="RSAAuthentication yes"
+sed -i "${RSAAuthentication_lineNum}s/^.*/${RSAAuthentication}/g" ~/../etc/ssh/sshd_config
+
+#PubkeyAuthentication
+PubkeyAuthentication_lineNum=`awk '/PubkeyAuthentication yes/{print NR}' ~/../etc/ssh/sshd_config`
+PubkeyAuthentication="PubkeyAuthentication yes"
+sed -i "${PubkeyAuthentication_lineNum}s/^.*/${PubkeyAuthentication}/g" ~/../etc/ssh/sshd_config
+
+#AuthorizedKeysFile
+AuthorizedKeysFile_lineNum=`awk '/AuthorizedKeysFile/{print NR}' ~/../etc/ssh/sshd_config`
+AuthorizedKeysFile="AuthorizedKeysFile .ssh\/authorized_keys"
+sed -i "${AuthorizedKeysFile_lineNum}s/^.*/${AuthorizedKeysFile}/g" ~/../etc/ssh/sshd_config
+
+echo "{You change in sshd_config as follow}"
+sed -n  "${RSAAuthentication_lineNum},${AuthorizedKeysFile_lineNum}p" ~/../etc/ssh/sshd_config
+
+#restart sshd service
+~/../sbin/service sshd restart
+echo "{Finish to update sshd_config}"
+
+#generate public key
+if [ ! -d ~/.ssh ] ;then
+	mkdir ~/.ssh
+fi
+
+cd ~/.ssh
+echo y | ssh-keygen -t rsa -P '' -f id_rsa
+if [ ! -f authorized_keys ] ;then
+	touch authorized_keys
+	cat id_rsa.pub > authorized_keys
+else
+	cat id_rsa.pub >> authorized_keys
+
+fi
+
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+
+
+#Download hadoop
+cd ~
+cd ../home/$hadoop_install_path &> /dev/null
+if [ $? -ne 0 ] ;then
+	echo "{Create /home/$hadoop_install_path folder to install jdk}"
+	cd ../home
+	mkdir $hadoop_install_path
+	cd $hadoop_install_path
+	echo "{Success to create $$hadoop_install_path folder}"
+else
+	echo "{/home/$hadoop_install_path folder has already exists}"
+	cd ~
+	cd ../home/$hadoop_install_path
+fi
+
+
+#check hadoop-2.7.0 folder is exists or not
+if [ ! -d "$hadoop_version" ] ;then
+	#check hadoop-2.7.0.tar.gz is exist or not
+	if [ ! -f "$hadoop_tar" ] ;then
+		echo "{Download $hadoop_tar}"
+		wget --no-check-certificate --no-cookies --header "Cookie: oraclelicense=accept-securebackup-cookie" $hadoop_url
+	fi
+	echo "{Untar $hadoop_tar}"
+	tar -zxvf $hadoop_tar
+else
+	echo "{$hadoop_version folder has already exists in /home/$hadoop_install_path/}"
+fi
+
+#enter into config folder
+cd $hadoop_version
+if [ ! -d "conf" ] ;then
+	cd etc/hadoop/
+else
+	cd conf
+fi
+
+#update hadoop-env.sh
+java_home_line_num=`awk '/export JAVA_HOME/{print NR}' hadoop-env.sh`
+JAVAHOME="export JAVA_HOME=\/usr\/local\/"$jdk_install_path"\/"$jdk_version
+
+#-i is directly modify the source file
+sed -i "${java_home_line_num}s/^.*/${JAVAHOME}/g" hadoop-env.sh
+cat hadoop-env.sh | grep "JAVA_HOME"
+echo "{Finish to update hadoop-env.sh}"
+
+
+hadoop_config_path=$(pwd)
+#echo $cur_path
+#echo $shFilePath
+#unalias cp
+#cp -rf core-site.xml $curPath/
+
+cd $shFilePath
+
+#update core_site.xml
+cat core-site.xml > $hadoop_config_path/core-site.xml
+if [ ! -d $hadoop_tmp_path ] ;then
+	mkdir $hadoop_tmp_path
+fi
+rm -rf $hadoop_tmp_path/*
+
+if [ ! -d $hadoop_name_path ] ;then
+	mkdir $hadoop_name_path
+fi
+chmod g-w $hadoop_name_path
+rm -rf $hadoop_name_path/*
+
+if [ ! -d $hadoop_data_path ] ;then
+	mkdir $hadoop_data_path
+fi
+chmod g-w $hadoop_data_path
+rm -rf $hadoop_data_path/*
+
+#update mapred-site.xml
+cat mapred-site.xml > $hadoop_config_path/mapred-site.xml
+
+#update hdfs-site.xml
+cat hdfs-site.xml > $hadoop_config_path/hdfs-site.xml
+
+cd $hadoop_config_path
+echo "{Check core-site.xml}"
+#cat core-site.xml
+echo "{Check mapred-site.xml}"
+#cat mapred-site.xml
+echo "{Check hdfs-site.xml}"
+#cat hdfs-site.xml
+echo "{Finish config hadoop}"
+
+#add hadoop account and has admin access
+id $user_name
+if [ $? -ne 0 ] ;then
+	echo "{add $user_name}"
+	sudo useradd -mr $user_name
+fi
+#set passwd for hadoop account
+echo $user_passwd | sudo passwd  --stdin $user_name
+
+echo "{Format hadoop}"
+echo Y | ../bin/hadoop namenode -format
+cd ../bin/
+bash stop-all.sh
+echo "{Start hadoop}"
+bash start-all.sh
+
+result=`jps | awk '{print $2}' | xargs`
+expect_result="JobTracker NameNode DataNode TaskTracker Jps SecondaryNameNode"
+if [ "$result" == "$expect_result" ] ;then
+	echo "{Congratulations!!! Success to intall hadoop!}"
+else
+	echo "{Sorry, fail to install hadoop and try to restart hadroop!}"
+	bash stop-all.sh
+	echo "{Start hadoop}"
+	bash start-all.sh
+	result=`jps | awk '{print $2}' | xargs`
+	if [ "$result" == "$expect_result" ] ;then
+		echo "{Sorry, fail to find all java thread and please check!}"
+	else
+		echo "{Congratulations!!! find all java thread, success to install hadoop!}"	
+	fi
+fi
+
+
+echo {!!!finish!!!}
+
+
+
+

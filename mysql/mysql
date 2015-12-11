@@ -1,0 +1,40 @@
+#!/bin/bash
+nfsaddr=192.168.1.106
+
+cd ~
+tar xf mariadb-5.5.36-linux-x86_64.tar.gZ -C /usr/local/
+groupadd -r -g 400 mysql
+useradd -r -g 400 -u mysql
+
+if [ ！-d /mydata ] ;then
+        mkdir /mydata
+fi
+mount -t nfs $nfsaddr:/mmydata/ /mydata/
+
+ln -sv mariadb-5.5.36-linux-x86_64 mysql
+chown -R root:mysql mysql/
+
+echo "!!!!{Only init on node1, not node2}"
+cd mysql
+scripts/mysql_install_db --user=mysql --datadir=/mydata/
+
+if [ ! -d /etc/mysql ] ;then
+	mkdir /etc/mysql
+fi
+
+cp support-files/my-large.cnf /etc/mysql/my.cnf
+vim /etc/mysql/my.cnf
+
+cp support-files/mysql.server /etc/init.d/mysqld
+chkconfig --add mysqld
+chkconfig my sqld off
+service mysqld start | grep "OK"
+if [ $? -ne 0 ] ;then
+        echo "!!!{Fail to start mysql service, please check}"
+fi
+service mysqld stop | grep "OK"
+if [ $? -ne 0 ] ;then
+        echo "!!!{Fail to stop mysql service, please check}"
+fi
+
+

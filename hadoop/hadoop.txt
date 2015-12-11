@@ -1,0 +1,1 @@
+http://101.44.1.126/files/4021000004191A94/mirror.bit.edu.cn/apache/hadoop/common/hadoop-2.7.0/hadoop-2.7.0.tar.gz

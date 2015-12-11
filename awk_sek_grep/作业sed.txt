@@ -1,0 +1,40 @@
+1.把Jon的名字改成Jonathan.
+sed 's/Jon/Jonathan/g' sedfile.txt
+
+2.删除头三行
+sed '1,3d' sedfile.txt
+
+3.显示5-10行
+sed -n '5,10p' sedfile.txt
+
+4.删除包含Lane的行.
+sed '\%Lane%d' sedfile.txt
+
+5.显示所有生日在November-December之间的行
+sed -n '/:1[1-2]\/.*/p' sedfile.txt
+
+6.把三个星号(***)添加到也Fred开头的行
+sed 's/^Fred/***Fred/' sedfile.txt
+
+7.用JOSE HAS RETIRED取代包含Jose的行
+sed '\@Jose@c \JOSE HAS RETIRED' sedfile.txt
+
+8.把Popeye的生日改成11/14/46
+sed -n '\%Popeye%p' sedfile.txt | sed 's/:[0-9]\+\/[0-9]\+\/[0-9]\+/:11\/14\/46/'
+
+9.删除所有空白行
+sed '/^$/d' sedfile.txt
+
+10.写一个脚本,将:
+.在第一行之前插入标题PERSONNEL FILE.
+.删除以500结尾的工资
+.显示文件内容,把姓和名颠倒
+.在文件末尾添加THE END
+******************************************************************
+sed.sh文件内容如下：
+
+#!/bin/bash
+
+sed '1i \PERSONNEL FILE' sedfile.txt | sed '/500\>/d' | sed '$i \THE END\n******************************************************************'
+
+

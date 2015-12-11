@@ -1,0 +1,18 @@
+#!/bin/bash
+#
+bindnetaddr=192.168.1.0
+nfsaddr=192.168.1.106
+
+echo "{Config nfs}"
+groupdd -r -g 400 mysql
+useradd -r -g 400 -u 400 mysql
+
+if [ ! -d /mydata ] ;then
+        mkdir /mydata
+fi
+chown mysql:mysql /mydata
+echo "/mydata $bindnetaddr /16(rw,no_root_sqush)" >> /etc/exports
+showmount -e $nfsaddr | grep "/mydata"
+if [ $? -ne 0 ] ;then
+         echo "!!!{Something is wrong when mount nfs!}"
+fi

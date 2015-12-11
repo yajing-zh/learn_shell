@@ -1,0 +1,194 @@
+#!/bin/bash
+#!/usr/local/bin/expect
+#      !/bin/bash
+#
+# Function : install 安装高可用mysql方案
+# args 	   : no
+# Author   : zhangyajing
+# Date     : 2015/11/11
+
+sh_path=`pwd`
+ntp_server=192.168.0.1
+node1_name=node1.mageedu.com
+node2_name=node2.mageedu.com
+node1_ip=192.168.1.128
+node2_ip=192.168.1.105
+bindnetaddr=192.168.1.0
+mcastaddr=228.24.45.1
+passwd="123456"
+
+#sync date
+echo "{Sync date now, and please wait a few miuntes.}"
+ntpdate $ntp_server &> /dev/null
+if [ $? -ne 0 ] ;then
+	ntpdate $ntp_server
+	echo "!!!{Fail to sync date and please check!}"
+else		
+	cat /etc/crontab | grep "$ntp_server"sh
+	if [ $? -ne 0 ] ;then
+		echo "*/3 * * * * /usr/sbin/ntpdate $ntp_server &> /dev/null" >> /etc/crontab
+	fi
+fi
+echo "{Date: `date`}"
+
+#config hostname
+echo "{Config this pc}"
+cat /proc/sys/kernel/hostname | grep "$node1_name" &> /dev/null
+if [ $? -ne 0 ] ;then
+	hostname $node1_name
+fi
+echo "nodename: `uname -n`"
+echo "pc  name: `cat /proc/sys/kernel/hostname`"
+
+echo "{Communicate with each other}"
+cat /etc/hosts | grep "$node1_ip" &> /dev/null
+if [ $? -ne 0 ] ;then
+	echo "{Add $node1_ip in /etc/hosts}"
+	echo "$node1_ip $node1_name node1" >> /etc/hosts
+fi
+
+cat /etc/hosts | grep "$node2_ip" &> /dev/null
+if [ $? -ne 0 ] ;then
+        echo "{Add $node2_ip in /etc/hosts}"
+        echo "$node2_ip $node2_name node2" >> /etc/hosts
+fi
+
+#
+
+/bin/rpm -qa|/bin/grep -q expect
+if [ $? -ne 0 ];then
+	echo "{Please install expect}"
+#	mkdir /home/expect
+#	wget http://tcpdiag.dl.sourceforge.net/project/tcl/Tcl/8.4.11/tcl8.4.11-src.tar.gz
+#	tar -zxvf tcl8.4.11-src.tar.gz
+#	yum install gcc gcc-c++ gcc-g77
+#	cd /home/tcl8.4.11/unix
+#	./configure --prefix=/usr/tcl --enable-shared
+#	make
+#	make install
+#	cd /home/expect/
+#	wget http://iweb.dl.sourceforge.net/project/expect/Expect/5.45/expect5.45.tar.gz
+#	tar xzvf expect5.45.tar.gz
+#	cd expect5.45
+#	./configure --prefix=/usr/expect --with-tcl=/usr/tcl/lib --with-tclinclude=../tcl8.4.11/generic
+#
+#	make
+#	make install
+#	ln -s /usr/tcl/bin/expect /usr/expect/bin/expect
+#
+#expect -c 
+#	scp -r /etc/hosts node2:/etc/
+#	expect {
+#    		\"*assword\" {set timeout 300; send \"$passwd\r\";}
+#   		\"yes/no\" {send \"yes\r\"; exp_continue;}
+#	}
+#	expect eof
+
+fi
+
+echo "{Copy /etc/hosts file from node1 to node2:/etc/}"
+scp -r /etc/hosts node2:/etc/
+
+echo “{Communicate with each other via ssh-key}”
+if [ ! -d /.ssh ] ;then
+	mkdir /.ssh
+fi
+echo y | ssh-keygen -t rsa -P '' -f /.ssh/id_rsa
+echo "{Copy id_rsa.pub to node2}"
+ssh-copy-id -i /.ssh/id_rsa.pub root@node2
+echo "{ssh node2}"
+#ssh node2 | grep "Last login" &> /dev/null
+if [ $? -ne 0 ] ;then
+	echo "!!!{Can not ssh node2 without passwd via ssh-key}"
+else
+	exit
+fi
+
+echo "{Install rpm package for corosync on node1&node2}"
+for i in node1 node2; do ssh $i 'yum install corosync -y';done
+
+echo "{Install rpm package for pacemaker on node1&node2}"
+for i in node1 node2; do ssh root@$i 'yum install pacemaker -y';done
+
+echo "{Generate and modify config files for corosync}"
+if [ ! -f /etc/corosync/corosync.conf ] ;then
+	cp /etc/corosync/corosync.conf.example /etc/corosync/corosync.conf
+fi
+cat /etc/corosync/corosync.conf | grep "secauth: on" &> /dev/null
+if [ $? -ne 0 ] ;then
+	echo "{Need modify the conf files}"
+	lineNum=`awk '/secauth: off/{print NR}' /etc/corosync/corosync.conf`
+	secauth_on="        secauth: on"
+	sed -i "${lineNum}s/^.*/${secauth_on}/g" /etc/corosync/corosync.conf
+fi
+bindnetaddr_linenum=`awk '/bindnetaddr: 192.168.1.0/{print NR}' /etc/corosync/corosync.conf`
+if [ $? -ne 0 ] ;then
+	echo "!!!{Please modify the bindnetaddr /etc/corosync/corosync.conf}"
+else
+	echo "{Modify bindnetaddr}"
+	bindnetaddr_content="                bindnetaddr: $bindnetaddr"
+	sed -i "${bindnetaddr_linenum}s/^.*/${bindnetaddr_content}/g" /etc/corosync/corosync.conf
+fi
+
+mcastaddr_linenum=`awk '/mcastaddr/{print NR}' /etc/corosync/corosync.conf`
+if [ $? -ne 0 ] ;then
+        echo "!!!{Please modify the mcastaddr in /etc/corosync/corosync.conf}"
+else
+	echo "{Modify mcastaddr}"
+	mcastaddr_content="                mcastaddr: $mcastaddr"
+	sed -i "${mcastaddr_linenum}s/^.*/${mcastaddr_content}/g" /etc/corosync/corosync.conf
+fi
+	
+cat /etc/corosync/corosync.conf | grep "service" &> /dev/null
+if [ $? -ne 0 ] ;then
+        echo "{Add service to the end of /etc/corosync/corosync.conf}"
+	echo "service {" >> /etc/corosync/corosync.conf
+	echo "        ver:     0" >> /etc/corosync/corosync.conf
+	echo "        name:    pacemaker" >> /etc/corosync/corosync.conf
+	echo "}" >> /etc/corosync/corosync.conf
+fi
+
+if [ ! -f /etc/corosync/authkey ] ;then
+	echo "{Please wait >10mins to generate authkey}"
+	cd /etc/corosync/
+	corosync-keygen
+fi
+scp authkey corosync.conf node2:/etc/corosync/
+
+echo "{Start corosync service}"
+service corosync start | grep "OK"
+if [ $? -ne 0 ] ;then
+	echo "!!!{Fail to start corosync service, please check!}"
+fi
+
+echo "{Check /var/log/cluster/corosync.log}"
+tail /var/log/cluster/corosync.log
+
+echo "{Check crm_mon is normal or not?}"
+cd ~
+crm_mon | grep "Online: [ $node1_name $node2_name ]"
+if [ $? -ne 0 ] ;then
+        echo "!!!{Something is wrong in crm_mon!}"
+fi
+
+ss -nut1
+
+echo "{Install crmsh via yum}"
+yum install crmsh
+
+echo "{Check crm?}"
+cd ~
+crm | grep "Online: [ $node1_name $node2_name ]"
+if [ $? -ne 0 ] ;then
+        echo "!!!{Something is wrong in crm!}"
+fi
+
+
+
+
+
+
+
+
+
+
