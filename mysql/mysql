@@ -1,4 +1,5 @@
 #!/bin/bash
+#使用bash脚本，安装高可用mysql方案，
 nfsaddr=192.168.1.106
 
 cd ~
