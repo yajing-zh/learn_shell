@@ -1,5 +1,5 @@
 #!/bin/bash
-#
+#编写shell脚本完成hadoop的集群安装
 
 root_password="123456"
 jdk_tar=jdk-8u65-linux-i586.tar.gz
