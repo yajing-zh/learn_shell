@@ -1,0 +1,31 @@
+push 3GP.3gp
+adbd is already running as root
+remount succeeded
+restarting adbd as root
+remount succeeded
+push jar and config files
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=
+com.gallery.test.GalleryTest:
+INSTRUMENTATION_STATUS: id=UiAutomatorTestRunner
+INSTRUMENTATION_STATUS: test=test3gpVideo
+INSTRUMENTATION_STATUS: class=com.gallery.test.GalleryTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: 1
+test3gpVideo_passed
+INSTRUMENTATION_STATUS: numtests=1
+INSTRUMENTATION_STATUS: stream=.
+INSTRUMENTATION_STATUS: id=UiAutomatorTestRunner
+INSTRUMENTATION_STATUS: test=test3gpVideo
+INSTRUMENTATION_STATUS: class=com.gallery.test.GalleryTest
+INSTRUMENTATION_STATUS: current=1
+INSTRUMENTATION_STATUS_CODE: 0
+INSTRUMENTATION_STATUS: stream=
+Test results for WatcherResultPrinter=.
+Time: 111.045
+
+OK (1 test)
+
+
+INSTRUMENTATION_STATUS_CODE: -1
+pull the screenshots
