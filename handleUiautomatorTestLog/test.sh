@@ -43,7 +43,7 @@ done
 }
 INIT_PATH=`pwd`
 echo '<?xml version="1.0" encoding="utf-8"?>' > test_result.xml
-echo "<result" >> test_result.xml
+echo "<result>" >> test_result.xml
 ergodic $INIT_PATH 
 echo "</result>" >> test_result.xml
 
